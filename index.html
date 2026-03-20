@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="color-scheme" content="light">
+<title>WTC for SQ</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --cream: #f5f0e8;
+    --ink: #1a1208;
+    --ink-mid: #4a3f2f;
+    --ink-light: #8a7a62;
+    --red: #8b1a1a;
+    --red-light: rgba(139,26,26,.18);
+    --gold: #c49a1e;
+    --gold-light: rgba(196,154,30,.18);
+    --rule: #c8bfaa;
+    --surface: #ede8df;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { color-scheme: light; }
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 16px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 16px 16px 0;
+    border-bottom: 2px solid var(--ink);
+    position: sticky; top: 0; z-index: 100;
+    background: var(--cream);
+  }
+  .header-top {
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  header h1 {
+    font-size: 1.05rem; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase;
+    flex: 1;
+  }
+  .header-counts {
+    font-family: 'Courier Prime', monospace;
+    font-size: .72rem; color: var(--ink-mid);
+    white-space: nowrap;
+  }
+  .header-counts span { color: var(--red); font-weight: 700; }
+  .collapse-btn {
+    background: none; border: 1px solid var(--rule);
+    border-radius: 3px; padding: 2px 7px;
+    font-size: .7rem; color: var(--ink-light);
+    cursor: pointer; font-family: 'Courier Prime', monospace;
+  }
+  .collapse-btn:active { background: var(--surface); }
+
+  /* ── Circle of Fifths ── */
+  .cof-wrap {
+    display: flex; justify-content: center;
+    padding: 14px 0 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .cof-svg { overflow: visible; }
+  .cof-sector {
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .cof-sector:active { opacity: .7; }
+  .cof-label {
+    font-family: 'EB Garamond', serif;
+    pointer-events: none;
+    dominant-baseline: middle;
+    text-anchor: middle;
+  }
+  .cof-center-text {
+    font-family: 'Courier Prime', monospace;
+    dominant-baseline: middle;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--rule);
+    font-size: .72rem;
+    font-family: 'Courier Prime', monospace;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; color: var(--ink-mid); }
+  .legend-swatch {
+    width: 12px; height: 12px; border-radius: 2px;
+    border: 1px solid var(--ink-light);
+    flex-shrink: 0;
+  }
+
+  /* ── Keys list ── */
+  .keys-list { padding: 0 0 80px; }
+  .key-section { border-bottom: 1px solid var(--rule); }
+  .key-section.highlighted .key-header {
+    background: rgba(139,26,26,.06);
+  }
+
+  .key-header {
+    display: flex; align-items: center;
+    padding: 10px 14px 10px 12px;
+    cursor: pointer; gap: 10px;
+  }
+  .key-header:active { background: rgba(0,0,0,.04); }
+
+  /* Progress ring around the key check */
+  .key-ring {
+    position: relative;
+    width: 26px; height: 26px;
+    flex-shrink: 0; cursor: pointer;
+  }
+  .key-ring svg { position: absolute; top: 0; left: 0; }
+  .ring-bg { fill: none; stroke: var(--rule); stroke-width: 2; }
+  .ring-progress { fill: none; stroke: var(--red); stroke-width: 2; stroke-linecap: round;
+    transform-origin: 13px 13px; transform: rotate(-90deg);
+    transition: stroke-dashoffset .3s ease; }
+  .ring-check {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--ink-mid);
+    position: absolute; top: 0; left: 0;
+    transition: all .2s;
+  }
+  .key-ring.done .ring-bg { stroke: var(--red); }
+  .key-ring.done .ring-check { background: var(--red); border-radius: 50%; color: white; }
+
+  .key-name-block { flex: 1; }
+  .key-name {
+    font-size: 1.05rem; font-weight: 600; line-height: 1.1;
+  }
+  .key-enharmonic {
+    font-size: .72rem; color: var(--ink-light); font-style: italic;
+  }
+  .key-uncertain-flag {
+    font-size: .65rem; color: var(--gold); font-family: 'Courier Prime', monospace;
+    letter-spacing: .06em;
+  }
+
+  .key-meta {
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .key-progress-frac {
+    font-family: 'Courier Prime', monospace;
+    font-size: .68rem; color: var(--ink-light);
+  }
+  .key-progress-frac.partial { color: var(--red); }
+  .key-chevron {
+    font-size: .7rem; color: var(--ink-light);
+    transition: transform .2s; flex-shrink: 0;
+  }
+  .key-section.open .key-chevron { transform: rotate(90deg); }
+
+  /* ── Pieces list ── */
+  .pieces-list {
+    display: none;
+    padding: 4px 14px 10px 48px;
+    margin-left: 12px;
+    border-left: 2px solid var(--rule);
+  }
+  .key-section.open .pieces-list { display: block; }
+  .key-section.open { background: rgba(0,0,0,.015); }
+
+  .piece-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .piece-check {
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 1.5px solid var(--ink-mid);
+    border-radius: 3px;
+    margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .2s; font-size: 10px;
+  }
+  .piece-check.done { background: var(--red); border-color: var(--red); color: white; }
+
+  .piece-info { flex: 1; min-width: 0; }
+  .piece-composer { font-weight: 600; font-size: .9rem; line-height: 1.3; }
+  .piece-title { font-style: italic; font-size: .82rem; color: var(--ink-mid); }
+  .piece-notes { font-size: .72rem; color: var(--ink-light); margin-top: 2px; font-style: italic; }
+  .piece-links { display: flex; gap: 6px; margin-top: 4px; }
+  .piece-link {
+    font-family: 'Courier Prime', monospace; font-size: .65rem;
+    color: var(--red); text-decoration: none;
+    border: 1px solid var(--red); padding: 1px 5px;
+    border-radius: 2px; opacity: .8;
+  }
+  .status-badge {
+    display: inline-block;
+    font-family: 'Courier Prime', monospace; font-size: .6rem;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 1px 4px; border-radius: 2px; margin-top: 2px;
+  }
+
+  .piece-row.uncertain { background: rgba(196,154,30,.08); border-radius: 3px; padding: 8px 8px; margin: 0 -8px; }
+  .piece-row.alternate { background: rgba(0,0,0,.03); border-radius: 3px; padding: 8px 8px; margin: 0 -8px; }
+  .piece-row.rejected { opacity: .5; }
+  .uncertain .status-badge { background: rgba(196,154,30,.18); color: #8a6800; }
+  .alternate .status-badge { background: rgba(0,0,0,.08); color: var(--ink-light); }
+  .rejected .status-badge { background: rgba(0,0,0,.06); color: var(--ink-light); }
+
+  /* ── Footer bar ── */
+  .footer-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--ink); color: var(--cream);
+    padding: 10px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Courier Prime', monospace; font-size: .75rem;
+    letter-spacing: .05em;
+  }
+  .footer-bar .val { font-size: 1.05rem; font-weight: 700; color: #e8c07a; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>Well-Tempered Quartet</h1>
+    <div class="header-counts" id="headerCounts"><span>0</span> / 24 keys</div>
+    <button class="collapse-btn" id="collapseAll" title="Toggle all"></button>
+  </div>
+  <div class="cof-wrap">
+    <svg class="cof-svg" id="cofSvg" width="290" height="290" viewBox="-145 -145 290 290"></svg>
+  </div>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--red);border-color:var(--red)"></div>played</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:rgba(139,26,26,.3);border-color:var(--red)"></div>partial</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--cream)"></div>candidate</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:rgba(196,154,30,.25);border-color:#c49a1e"></div>uncertain</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--surface)"></div>alternate</div>
+</div>
+
+<div class="keys-list" id="keysList"></div>
+
+<div class="footer-bar">
+  <span>KEYS</span><span class="val" id="fKeys">0/24</span>
+  <span>PIECES</span><span class="val" id="fPieces">0/?</span>
+  <span>PROGRESS</span><span class="val" id="fPct">0%</span>
+</div>
+
+<script>
+// ── Data — loaded from quartets.json ─────────────────────────────────────
+// Serve this file from a local web server, e.g.:
+//   python3 -m http.server 8000
+// then open http://localhost:8000/wtq-dashboard.html
+let PIECES = [];
+
+// ── Key definitions (canonical Bach/WTC spellings) ──────────────────────
+// Each entry: [canonical key, mode, display name, enharmonic note, spreadsheet aliases]
+const KEYS = [
+  { k:'C',   m:'Major', disp:'C',   enh:null,           aliases:[['C','Major']] },
+  { k:'C',   m:'Minor', disp:'C',   enh:null,           aliases:[['C','Minor']] },
+  { k:'C♯',  m:'Major', disp:'C♯',  enh:'D♭ in score',  aliases:[['C#','Major'],['D-flat','Major'],['Db','Major']] },
+  { k:'C♯',  m:'Minor', disp:'C♯',  enh:null,           aliases:[['C#','Minor']] },
+  { k:'D',   m:'Major', disp:'D',   enh:null,           aliases:[['D','Major']] },
+  { k:'D',   m:'Minor', disp:'D',   enh:null,           aliases:[['D','Minor']] },
+  { k:'E♭',  m:'Major', disp:'E♭',  enh:null,           aliases:[['Eb','Major'],['E-flat','Major']] },
+  { k:'E♭',  m:'Minor', disp:'E♭',  enh:null,           aliases:[['Eb','Minor'],['E-flat','Minor']] },
+  { k:'E',   m:'Major', disp:'E',   enh:null,           aliases:[['E','Major']] },
+  { k:'E',   m:'Minor', disp:'E',   enh:null,           aliases:[['E','Minor']] },
+  { k:'F',   m:'Major', disp:'F',   enh:null,           aliases:[['F','Major']] },
+  { k:'F',   m:'Minor', disp:'F',   enh:null,           aliases:[['F','Minor']] },
+  { k:'F♯',  m:'Major', disp:'F♯',  enh:null,           aliases:[['F#','Major'],['F-sharp','Major']] },
+  { k:'F♯',  m:'Minor', disp:'F♯',  enh:null,           aliases:[['F#','Minor'],['F-sharp','Minor']] },
+  { k:'G',   m:'Major', disp:'G',   enh:null,           aliases:[['G','Major']] },
+  { k:'G',   m:'Minor', disp:'G',   enh:null,           aliases:[['G','Minor']] },
+  { k:'A♭',  m:'Major', disp:'A♭',  enh:null,           aliases:[['Ab','Major'],['A-flat','Major']] },
+  { k:'G♯',  m:'Minor', disp:'G♯',  enh:'A♭ in score',  aliases:[['G#','Minor'],['Ab','Minor'],['A-flat','Minor']] },
+  { k:'A',   m:'Major', disp:'A',   enh:null,           aliases:[['A','Major']] },
+  { k:'A',   m:'Minor', disp:'A',   enh:null,           aliases:[['A','Minor']] },
+  { k:'B♭',  m:'Major', disp:'B♭',  enh:null,           aliases:[['Bb','Major'],['B-flat','Major']] },
+  { k:'B♭',  m:'Minor', disp:'B♭',  enh:null,           aliases:[['Bb','Minor'],['B-flat','Minor']] },
+  { k:'B',   m:'Major', disp:'B',   enh:null,           aliases:[['B','Major']] },
+  { k:'B',   m:'Minor', disp:'B',   enh:null,           aliases:[['B','Minor']] },
+];
+
+// Circle of fifths positions (index = clockwise position from top)
+// position → [major key index in KEYS, minor key index in KEYS]
+const COF_POS = [
+  [0, 1],   // C Maj / C Min  → pos 0
+  [14, 15], // G Maj / G Min  → pos 1
+  [4, 5],   // D Maj / D Min  → pos 2
+  [18, 19], // A Maj / A Min  → pos 3
+  [8, 9],   // E Maj / E Min  → pos 4
+  [22, 23], // B Maj / B Min  → pos 5
+  [12, 13], // F♯ Maj / F♯ Min → pos 6
+  [2, 3],   // C♯ Maj / C♯ Min → pos 7
+  [16, 17], // A♭ Maj / G♯ Min → pos 8
+  [6, 7],   // E♭ Maj / E♭ Min → pos 9
+  [20, 21], // B♭ Maj / B♭ Min → pos 10
+  [11, 10], // F Min / F Maj  → pos 11  (note: min outer, maj inner? no — see below)
+];
+// Actually: outer = major, inner = minor
+// pos 11: F Major, D Minor (relative minor of F major)
+// Let me redo this with correct relative minors
+const COF_MAJOR_IDX = [0, 14, 4, 18, 8, 22, 12, 2, 16, 6, 20, 10]; // C G D A E B F♯ C♯ A♭ E♭ B♭ F
+const COF_MINOR_IDX = [19, 9, 23, 13, 3, 17, 7, 21, 11, 1, 15, 5]; // A E B F♯ C♯ G♯ E♭ B♭ F C G D
+
+// ── State & helpers ───────────────────────────────────────────────────────
+const LS = 'wtq_v2';
+const loadState = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } };
+const saveState = s => localStorage.setItem(LS, JSON.stringify(s));
+let state = loadState();
+
+function pieceMatches(p, key) {
+  return key.aliases.some(([k, m]) => p.key === k && p.mode === m);
+}
+
+function piecesForKey(key) {
+  return PIECES.filter(p => pieceMatches(p, key));
+}
+
+function candidatesForKey(key) {
+  return piecesForKey(key).filter(p => p.status === 'candidate');
+}
+
+function pid(key, p) { return `p_${key.k}_${key.m}_${p.composer}_${p.piece}`; }
+function kid(key) { return `key_${key.k}_${key.m}`; }
+
+function keyStats(key) {
+  const candidates = candidatesForKey(key);
+  const done = candidates.filter(p => state[pid(key, p)]);
+  return { total: candidates.length, done: done.length };
+}
+
+function ytLink(raw) {
+  const m = (raw||'').match(/https?:\/\/[^\s]*youtu[^\s]*/);
+
+  return m ? m[0] : '';
+}
+
+// ── Circle of Fifths ──────────────────────────────────────────────────────
+const TAU = Math.PI * 2;
+const toRad = deg => (deg - 90) * Math.PI / 180;
+const R_OUTER_OUT = 130, R_OUTER_IN = 95;
+const R_INNER_OUT = 92,  R_INNER_IN = 62;
+const R_LABEL_OUTER = 112, R_LABEL_INNER = 77;
+const GAP_DEG = 2;
+
+function arcPath(r1, r2, startDeg, endDeg) {
+  const s = startDeg + GAP_DEG/2, e = endDeg - GAP_DEG/2;
+  const x1 = r2 * Math.cos(toRad(s)), y1 = r2 * Math.sin(toRad(s));
+  const x2 = r2 * Math.cos(toRad(e)), y2 = r2 * Math.sin(toRad(e));
+  const x3 = r1 * Math.cos(toRad(e)), y3 = r1 * Math.sin(toRad(e));
+  const x4 = r1 * Math.cos(toRad(s)), y4 = r1 * Math.sin(toRad(s));
+  const lg = (e - s > 180) ? 1 : 0;
+  return `M${x1},${y1} A${r2},${r2} 0 ${lg},1 ${x2},${y2} L${x3},${y3} A${r1},${r1} 0 ${lg},0 ${x4},${y4}Z`;
+}
+
+function sectorFill(keyIdx) {
+  const key = KEYS[keyIdx];
+  const { total, done } = keyStats(key);
+  const keyDone = !!state[kid(key)];
+  const allUncertain = piecesForKey(key).every(p => p.status === 'uncertain' || p.status === 'alternate');
+
+  if (keyDone || (total > 0 && done === total)) return '#8b1a1a';
+  if (done > 0) return 'rgba(139,26,26,0.38)';
+  if (allUncertain && total === 0) return 'rgba(196,154,30,0.28)';
+  return 'rgba(200,191,170,0.35)';
+}
+
+function sectorStroke(keyIdx) {
+  const key = KEYS[keyIdx];
+  const { total, done } = keyStats(key);
+  const keyDone = !!state[kid(key)];
+  if (keyDone || (total > 0 && done === total)) return '#6b1010';
+  if (done > 0) return 'rgba(139,26,26,0.6)';
+  return 'rgba(150,140,120,0.5)';
+}
+
+function buildCoF() {
+  const svg = document.getElementById('cofSvg');
+  svg.innerHTML = '';
+
+  // Outer (major) sectors — offset -15° so C is centered at 12 o'clock
+  COF_MAJOR_IDX.forEach((ki, pos) => {
+    const startDeg = pos * 30 - 15, endDeg = (pos + 1) * 30 - 15;
+    const midDeg = pos * 30;
+    const key = KEYS[ki];
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('cof-sector');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', arcPath(R_OUTER_IN, R_OUTER_OUT, startDeg, endDeg));
+    path.setAttribute('fill', sectorFill(ki));
+    path.setAttribute('stroke', sectorStroke(ki));
+    path.setAttribute('stroke-width', '0.5');
+    g.appendChild(path);
+
+    const lx = R_LABEL_OUTER * Math.cos(toRad(midDeg));
+    const ly = R_LABEL_OUTER * Math.sin(toRad(midDeg));
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', lx); text.setAttribute('y', ly);
+    text.setAttribute('font-size', '10');
+    text.setAttribute('fill', sectorFill(ki) === '#8b1a1a' ? '#f5f0e8' : '#2a1e10');
+    text.classList.add('cof-label');
+    text.textContent = key.disp;
+    g.appendChild(text);
+
+    g.addEventListener('click', () => scrollToKey(ki));
+    svg.appendChild(g);
+  });
+
+  // Inner (minor) sectors — same -15° offset
+  COF_MINOR_IDX.forEach((ki, pos) => {
+    const startDeg = pos * 30 - 15, endDeg = (pos + 1) * 30 - 15;
+    const midDeg = pos * 30;
+    const key = KEYS[ki];
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('cof-sector');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', arcPath(R_INNER_IN, R_INNER_OUT, startDeg, endDeg));
+    path.setAttribute('fill', sectorFill(ki));
+    path.setAttribute('stroke', sectorStroke(ki));
+    path.setAttribute('stroke-width', '0.5');
+    g.appendChild(path);
+
+    const lx = R_LABEL_INNER * Math.cos(toRad(midDeg));
+    const ly = R_LABEL_INNER * Math.sin(toRad(midDeg));
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', lx); text.setAttribute('y', ly);
+    text.setAttribute('font-size', '8.5');
+    text.setAttribute('fill', sectorFill(ki) === '#8b1a1a' ? '#f5f0e8' : '#3a2e1e');
+    text.setAttribute('font-style', 'italic');
+    text.classList.add('cof-label');
+    text.textContent = key.disp;
+    g.appendChild(text);
+
+    g.addEventListener('click', () => scrollToKey(ki));
+    svg.appendChild(g);
+  });
+
+  // Center text
+  const ct = (txt, y, sz, color='#1a1208') => {
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', 0); t.setAttribute('y', y);
+    t.setAttribute('font-size', sz); t.setAttribute('fill', color);
+    t.classList.add('cof-center-text');
+    t.textContent = txt;
+    svg.appendChild(t);
+  };
+  const kd = KEYS.filter(key => state[kid(key)]).length;
+  const pct = Math.round(kd / 24 * 100);
+  ct('WTC', -10, '10');
+  ct(`${kd}/24`, 6, '14', '#8b1a1a');
+  ct(`${pct}%`, 20, '9', '#8a7a62');
+}
+
+// ── Progress ring helper ──────────────────────────────────────────────────
+function ringHTML(fraction, isDone) {
+  const r = 10, circ = 2 * Math.PI * r;
+  const dash = fraction * circ;
+  const checkFill = isDone ? 'var(--red)' : 'transparent';
+  const checkColor = isDone ? 'white' : 'var(--ink-mid)';
+  return `<svg width="26" height="26" viewBox="0 0 26 26">
+    <circle class="ring-bg" cx="13" cy="13" r="${r}"/>
+    <circle class="ring-progress" cx="13" cy="13" r="${r}"
+      stroke-dasharray="${dash} ${circ}" stroke-dashoffset="0"
+      style="${isDone ? 'stroke:var(--red)' : ''}"/>
+    ${isDone ? `<circle cx="13" cy="13" r="9" fill="var(--red)"/>` : ''}
+    <text x="13" y="17" text-anchor="middle" font-size="10"
+      fill="${checkColor}" font-family="EB Garamond, serif">✓</text>
+  </svg>`;
+}
+
+// ── Render list ────────────────────────────────────────────────────────────
+function scrollToKey(ki) {
+  // Open it
+  state[`open_${ki}`] = true;
+  saveState(state);
+  render();
+  // Re-query after render (which rebuilds the DOM)
+  requestAnimationFrame(() => {
+    const el = document.getElementById(`key_section_${ki}`);
+    if (!el) return;
+    const header = document.querySelector('header');
+    const y = el.getBoundingClientRect().top + window.scrollY - header.offsetHeight;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+    el.classList.add('highlighted');
+    setTimeout(() => el.classList.remove('highlighted'), 1500);
+  });
+}
+
+function render() {
+  const list = document.getElementById('keysList');
+  list.innerHTML = '';
+  let keysDone = 0, pTotal = 0, pDone = 0;
+
+  KEYS.forEach((key, ki) => {
+    const pieces = piecesForKey(key);
+    const candidates = candidatesForKey(key);
+    const doneCount = candidates.filter(p => state[pid(key, p)]).length;
+    const isKeyDone = !!state[kid(key)];
+    const isOpen = !!state[`open_${ki}`];
+    const allUncertain = candidates.length === 0;
+
+    if (isKeyDone) keysDone++;
+    pTotal += candidates.length;
+    pDone += doneCount;
+
+    const fraction = candidates.length > 0 ? doneCount / candidates.length : 0;
+
+    const sec = document.createElement('div');
+    sec.className = `key-section${isOpen ? ' open' : ''}`;
+    sec.id = `key_section_${ki}`;
+
+    const fracLabel = candidates.length > 0
+      ? `<span class="key-progress-frac${doneCount > 0 && !isKeyDone ? ' partial' : ''}">${doneCount}/${candidates.length}</span>`
+      : `<span class="key-progress-frac" style="color:var(--gold)">no candidates</span>`;
+
+    const enhLine = key.enh
+      ? `<div class="key-enharmonic">Bach spells: ${key.k} ${key.m}</div>`
+      : '';
+    const uncertainFlag = allUncertain
+      ? `<div class="key-uncertain-flag">⚠ candidates unconfirmed</div>`
+      : '';
+
+    sec.innerHTML = `
+      <div class="key-header">
+        <div class="key-ring${isKeyDone ? ' done' : ''}" data-kid="${ki}">
+          ${ringHTML(isKeyDone ? 1 : fraction, isKeyDone)}
+        </div>
+        <div class="key-name-block">
+          <div class="key-name">${key.disp} <span style="font-style:italic;font-weight:400;color:var(--ink-mid);font-size:.9rem">${key.m}</span></div>
+          ${enhLine}${uncertainFlag}
+        </div>
+        <div class="key-meta">
+          ${fracLabel}
+          <span class="key-chevron">▶</span>
+        </div>
+      </div>
+      <div class="pieces-list">
+        ${pieces.map(p => {
+          const isDone = !!state[pid(key, p)];
+          const yt = ytLink(p.ytUrl);
+          return `<div class="piece-row ${p.status}">
+            <div class="piece-check${isDone ? ' done' : ''}" data-pid="${pid(key, p)}">✓</div>
+            <div class="piece-info">
+              <div class="piece-composer">${p.composer}</div>
+              ${p.piece && p.piece !== 'tbd' ? `<div class="piece-title">${p.piece}</div>` : ''}
+              ${p.notes ? `<div class="piece-notes">${p.notes}</div>` : ''}
+              <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:2px">
+                ${p.status !== 'candidate' ? `<span class="status-badge">${p.status}</span>` : ''}
+                ${p.scoreUrl ? `<a class="piece-link" href="${p.scoreUrl}" target="_blank">score</a>` : ''}
+                ${yt ? `<a class="piece-link" href="${yt}" target="_blank">video</a>` : ''}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+
+    sec.querySelector('.key-ring').addEventListener('click', e => {
+      e.stopPropagation();
+      const i = +e.currentTarget.dataset.kid;
+      const k = KEYS[i];
+      state[kid(k)] = !state[kid(k)];
+      saveState(state); render(); buildCoF();
+    });
+
+    sec.querySelector('.key-header').addEventListener('click', e => {
+      if (e.target.closest('.key-ring')) return;
+      state[`open_${ki}`] = !state[`open_${ki}`];
+      saveState(state); render();
+    });
+
+    sec.querySelectorAll('[data-pid]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        state[el.dataset.pid] = !state[el.dataset.pid];
+        saveState(state); render(); buildCoF();
+      });
+    });
+
+    list.appendChild(sec);
+  });
+
+  // Stats
+  document.getElementById('headerCounts').innerHTML = `<span>${keysDone}</span> / 24 keys`;
+  document.getElementById('fKeys').textContent = `${keysDone}/24`;
+  document.getElementById('fPieces').textContent = `${pDone}/${pTotal}`;
+  document.getElementById('fPct').textContent = Math.round(keysDone / 24 * 100) + '%';
+
+  const anyOpen = KEYS.some((_, ki) => state[`open_${ki}`]);
+  const btn = document.getElementById('collapseAll');
+  btn.textContent = anyOpen ? '\u25B2' : '\u25BC';
+  btn.title = anyOpen ? 'Collapse all' : 'Expand all';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch("quartets.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    PIECES = await res.json();
+  } catch (err) {
+    document.getElementById("keysList").innerHTML =
+      `<div style="padding:24px 16px;font-family:'Courier Prime',monospace;font-size:.8rem;color:#8b1a1a">
+        Failed to load quartets.json: ${err.message}<br><br>
+        Serve this directory with a local web server, e.g.:<br>
+        <code>python3 -m http.server 8000</code>
+      </div>`;
+    return;
+  }
+  render();
+  buildCoF();
+
+  document.getElementById('collapseAll').addEventListener('click', () => {
+    const anyOpen = KEYS.some((_, ki) => state[`open_${ki}`]);
+    KEYS.forEach((_, ki) => {
+      if (anyOpen) delete state[`open_${ki}`];
+      else state[`open_${ki}`] = true;
+    });
+    saveState(state);
+    render();
+    if (anyOpen) window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+init();
+</script>
+</body>
+</html>
