@@ -3,6 +3,7 @@ import { loadData } from './data.js';
 // ── Data ─────────────────────────────────────────────────────────────────
 let PIECES = [];
 let PLAYED = [];
+let PLAYED_DATES = {};  // pid → most recent date string
 
 // ── Key definitions (canonical Bach/WTC spellings) ──────────────────────
 const KEYS = [
@@ -59,6 +60,55 @@ function keyStats(key) {
 function ytLink(raw) {
   const m = (raw||'').match(/https?:\/\/[^\s]*youtu[^\s]*/);
   return m ? m[0] : '';
+}
+
+// ── Match played entries to pieces ──────────────────────────────────────
+// Normalize piece names for fuzzy comparison between Played and Quartets sheets.
+// Played uses "18#4", quartets uses "18/4"; played "12", quartets "#12"; etc.
+function normPiece(s) {
+  return (s || '').replace(/^#/, '').replace(/#/g, '/').replace(/\.0$/, '').replace(/[.\s,]/g, '').toLowerCase();
+}
+
+function findMatchingPiece(played, key) {
+  const pieces = piecesForKey(key).filter(p => p.composer === played.composer);
+  if (pieces.length === 0) return null;
+
+  const np = normPiece(played.piece);
+
+  // Try piece name matching
+  for (const p of pieces) {
+    const nq = normPiece(p.piece);
+    if (!np || !nq) continue;
+    if (np === nq) return p;
+    if (nq.startsWith(np) || np.startsWith(nq) || nq.includes(np)) return p;
+  }
+
+  // Fallback: if only one piece by this composer in this key and it has no piece name, assume match
+  if (pieces.length === 1 && !normPiece(pieces[0].piece)) return pieces[0];
+
+  return null;
+}
+
+// Apply played data to state — additive only (never unchecks).
+function applyPlayedState() {
+  PLAYED_DATES = {};
+  let applied = 0;
+  for (const played of PLAYED) {
+    const key = KEYS.find(k => pieceMatches(played, k));
+    if (!key) continue;
+    const match = findMatchingPiece(played, key);
+    if (!match) continue;
+    const id = pid(key, match);
+    if (!state[id]) {
+      state[id] = true;
+      applied++;
+    }
+    // Track most recent played date
+    if (played.date && (!PLAYED_DATES[id] || played.date > PLAYED_DATES[id])) {
+      PLAYED_DATES[id] = played.date;
+    }
+  }
+  if (applied > 0) saveState(state);
 }
 
 // ── Circle of Fifths ────────────────────────────────────────────────────
@@ -239,7 +289,7 @@ function render() {
           return `<div class="piece-row ${p.status}">
             <div class="piece-check${isDone ? ' done' : ''}" data-pid="${pid(key, p)}">✓</div>
             <div class="piece-info">
-              <div class="piece-composer">${p.composer}</div>
+              <div class="piece-composer">${p.composer}${PLAYED_DATES[pid(key, p)] ? `<span class="played-date">${PLAYED_DATES[pid(key, p)]}</span>` : ''}</div>
               ${p.piece && p.piece !== 'tbd' ? `<div class="piece-title">${p.piece}</div>` : ''}
               ${p.notes ? `<div class="piece-notes">${p.notes}</div>` : ''}
               <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:2px">
@@ -303,6 +353,7 @@ function showSource(source) {
 function renderAll(data, source) {
   PIECES = data.pieces || [];
   PLAYED = data.played || [];
+  applyPlayedState();
   render();
   buildCoF();
   showSource(source);

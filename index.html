@@ -195,7 +195,7 @@
   .piece-check.done { background: var(--red); border-color: var(--red); color: white; }
 
   .piece-info { flex: 1; min-width: 0; }
-  .piece-composer { font-weight: 600; font-size: .9rem; line-height: 1.3; }
+  .piece-composer { font-weight: 600; font-size: .9rem; line-height: 1.3; display: flex; align-items: baseline; gap: 6px; }
   .piece-title { font-style: italic; font-size: .82rem; color: var(--ink-mid); }
   .piece-notes { font-size: .72rem; color: var(--ink-light); margin-top: 2px; font-style: italic; }
   .piece-links { display: flex; gap: 6px; margin-top: 4px; }
@@ -204,6 +204,11 @@
     color: var(--red); text-decoration: none;
     border: 1px solid var(--red); padding: 1px 5px;
     border-radius: 2px; opacity: .8;
+  }
+  .played-date {
+    font-family: 'Courier Prime', monospace; font-size: .6rem;
+    color: var(--ink-light); letter-spacing: .04em;
+    margin-left: auto; white-space: nowrap; font-weight: 400;
   }
   .status-badge {
     display: inline-block;
