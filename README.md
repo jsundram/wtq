@@ -7,28 +7,45 @@ keys as complete over time.
 
 Started with [this claude chat](https://claude.ai/chat/ed36e476-e218-45a4-a092-d9f9bb66d561)
 
+**Live site**: [jsundram.github.io/wtq](https://jsundram.github.io/wtq/)
+
+## How it works
+
+The dashboard fetches data directly from a [published Google Sheet](https://docs.google.com/spreadsheets/d/13HGcnzgv6SlDq3_TLyeP01JslbrQqY6GGZBjbzqOSBE/edit?gid=0#gid=0) as xlsx, parses it in the browser using [SheetJS](https://sheetjs.com/), and renders the results. Edit the spreadsheet and the site updates automatically — no build or deploy step needed.
+
+Data is cached in `localStorage` for instant rendering on repeat visits, with a background refresh when the sheet is reachable.
+
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `some_quartets_by_key.xlsx` | Source of truth — exported from google sheets [here](https://docs.google.com/spreadsheets/d/13HGcnzgv6SlDq3_TLyeP01JslbrQqY6GGZBjbzqOSBE/edit?gid=0#gid=0) |
-| `xlsx_to_json.py` | Converts the xlsx to `quartets.json` |
-| `quartets.json` | Generated data consumed by the dashboard |
+| `index.html` | Mobile-optimised dashboard (HTML + CSS) |
+| `js/data.js` | Fetches and parses the Google Sheet xlsx, manages cache |
+| `js/app.js` | Dashboard rendering, state, circle of fifths |
+| `manifest.json` | Web app manifest (iOS home screen support) |
+| `favicon/` | App icons (SVG, PNG, ICO) |
+| `some_quartets_by_key.xlsx` | Local export of the source spreadsheet |
+| `xlsx_to_json.py` | Python conversion script (development/validation) |
+| `played_to_json.py` | Python script to extract played pieces (development) |
+| `quartets.json` | Generated data (Python pipeline output) |
+| `played.json` | Generated played pieces (Python pipeline output) |
 | `quartets.schema.json` | JSON Schema (draft 2020-12) for `quartets.json` |
-| `index.html` | Mobile-optimised dashboard |
-| `build.sh` | Runs conversion + validation (see below) |
+| `build.sh` | Runs Python conversion + validation |
+| `test_parse.mjs` | Tests JS parsing against Python output |
 
-## Workflow
+## Development
 
 ```bash
-# 1. Edit some_quartets_by_key.xlsx in Excel / Numbers
+# Serve locally
+python3 -m http.server 8000
+# open http://localhost:8000/
 
-# 2. Rebuild — converts xlsx and validates the output
+# Validate Python pipeline (requires uv)
 ./build.sh
 
-# 3. Serve locally (fetch() requires a real server, not file://)
-python3 -m http.server 8000
-# open http://localhost:8000/index.html
+# Test JS parsing matches Python output (requires node)
+curl -sL "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs" -o /tmp/xlsx.mjs
+node test_parse.mjs
 ```
 
 `build.sh` uses [`uv`](https://github.com/astral-sh/uv) to run Python with
@@ -40,11 +57,11 @@ The xlsx encodes editorial status via **cell background colour**:
 
 | Colour | Hex | Meaning |
 |--------|-----|---------|
-| White (none) | `00000000` | **candidate** — primary selection for this key |
-| Yellow | `FFFFF2CC` | **uncertain** — tonality questionable or key is a stretch |
-| Light grey | `FFCCCCCC` | **alternate** — viable backup option |
-| Dark grey | `FF999999` | **rejected** — struck from consideration |
-| Pink | `FFF4CCCC` | *(empty placeholder row — skipped)* |
+| White (none) | — | **candidate** — primary selection for this key |
+| Yellow | `FFF2CC` | **uncertain** — tonality questionable or key is a stretch |
+| Light grey | `CCCCCC` | **alternate** — viable backup option |
+| Dark grey | `999999` | **rejected** — struck from consideration |
+| Pink | `F4CCCC` | *(empty placeholder row — skipped)* |
 
 The dashboard displays candidates prominently; alternates and uncertain entries
 are shown in subdued styles when a key is expanded.
@@ -72,8 +89,9 @@ The dashboard shows both spellings where they differ.
 - **Status badges** distinguish candidates, alternates, uncertain, and rejected entries.
 - **Score and video links** pulled from IMSLP and YouTube URLs in the spreadsheet.
 - **localStorage** persistence — all check state survives page reloads, no server needed.
-- Keys with only uncertain candidates show a ⚠ warning (e.g. B Major currently has
-  no confirmed pieces).
+- **Stale-while-revalidate caching** — renders cached data instantly, refreshes from Google Sheets in background.
+- **Data source indicator** in footer shows whether data is live, cached, or offline.
+- Keys with only uncertain candidates show a ⚠ warning.
 
 ## Data schema
 
@@ -89,16 +107,4 @@ notes       string    free-text tonality or fugal content notes
 scoreUrl    string    IMSLP URL or ""
 ytUrl       string    YouTube URL or "" (extracted from prose if needed)
 status      string    "candidate" | "uncertain" | "alternate" | "rejected"
-```
-
-Validate manually at any time:
-```bash
-uv run --with jsonschema python3 -c "
-import json
-from jsonschema import validate
-from pathlib import Path
-validate(json.loads(Path('quartets.json').read_text()),
-         json.loads(Path('quartets.schema.json').read_text()))
-print('ok')
-"
 ```

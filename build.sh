@@ -36,10 +36,10 @@ import json, re, sys
 from pathlib import Path
 
 data   = json.loads(Path("quartets.json").read_text())
-html   = Path("index.html").read_text()
+html   = Path("js/app.js").read_text()
 errors = []
 
-# --- Extract dashboard aliases from index.html ---
+# --- Extract dashboard aliases from js/app.js ---
 # Matches: aliases:[['C','Major'],['D-flat','Major']]
 aliases = set()
 for match in re.finditer(r"aliases:\[(\[.+?\])\]", html):
