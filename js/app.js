@@ -152,7 +152,7 @@ function buildCoF() {
   const svg = document.getElementById('cofSvg');
   svg.innerHTML = '';
 
-  function addSectors(indices, rIn, rOut, rLabel, fontSize, italic) {
+  function addSectors(indices, rIn, rOut, rLabel, fontSize) {
     indices.forEach((ki, pos) => {
       const startDeg = pos * 30 - 15, endDeg = (pos + 1) * 30 - 15;
       const midDeg = pos * 30;
@@ -172,10 +172,9 @@ function buildCoF() {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', lx); text.setAttribute('y', ly);
       text.setAttribute('font-size', fontSize);
-      text.setAttribute('fill', sectorFill(ki) === '#8b1a1a' ? '#f5f0e8' : (italic ? '#3a2e1e' : '#2a1e10'));
-      if (italic) text.setAttribute('font-style', 'italic');
+      text.setAttribute('fill', sectorFill(ki) === '#8b1a1a' ? '#f5f0e8' : '#2a1e10');
       text.classList.add('cof-label');
-      text.textContent = key.disp;
+      text.textContent = key.m === 'Minor' ? key.disp.toLowerCase() : key.disp;
       g.appendChild(text);
 
       g.addEventListener('click', () => scrollToKey(ki));
@@ -183,8 +182,8 @@ function buildCoF() {
     });
   }
 
-  addSectors(COF_MAJOR_IDX, R_OUTER_IN, R_OUTER_OUT, R_LABEL_OUTER, '10', false);
-  addSectors(COF_MINOR_IDX, R_INNER_IN, R_INNER_OUT, R_LABEL_INNER, '8.5', true);
+  addSectors(COF_MAJOR_IDX, R_OUTER_IN, R_OUTER_OUT, R_LABEL_OUTER, '14');
+  addSectors(COF_MINOR_IDX, R_INNER_IN, R_INNER_OUT, R_LABEL_INNER, '12');
 
   // Center text
   const ct = (txt, y, sz, color='#1a1208') => {
@@ -195,11 +194,14 @@ function buildCoF() {
     t.textContent = txt;
     svg.appendChild(t);
   };
-  const kd = KEYS.filter(key => state[kid(key)]).length;
-  const pct = Math.round(kd / 24 * 100);
-  ct('WTC', -10, '10');
-  ct(`${kd}/24`, 6, '14', '#8b1a1a');
-  ct(`${pct}%`, 20, '9', '#8a7a62');
+  const sd = KEYS.reduce((sum, key) => {
+    const done = candidatesForKey(key).filter(p => state[pid(key, p)]).length;
+    return sum + Math.min(done, 2);
+  }, 0);
+  const cofPct = Math.round(sd / 48 * 100);
+  ct('WTQ', -10, '10');
+  ct(`${sd}/48`, 6, '14', '#8b1a1a');
+  ct(`${cofPct}%`, 20, '9', '#8a7a62');
 }
 
 // ── Progress ring helper ────────────────────────────────────────────────
@@ -237,7 +239,7 @@ function scrollToKey(ki) {
 function render() {
   const list = document.getElementById('keysList');
   list.innerHTML = '';
-  let keysDone = 0, pTotal = 0, pDone = 0;
+  let slotsDone = 0;  // each key contributes min(doneCount, 2), out of 48
 
   KEYS.forEach((key, ki) => {
     const pieces = piecesForKey(key);
@@ -247,9 +249,7 @@ function render() {
     const isOpen = !!state[`open_${ki}`];
     const allUncertain = candidates.length === 0;
 
-    if (isKeyDone) keysDone++;
-    pTotal += candidates.length;
-    pDone += doneCount;
+    slotsDone += Math.min(doneCount, 2);
 
     const fraction = candidates.length > 0 ? doneCount / candidates.length : 0;
 
@@ -328,11 +328,12 @@ function render() {
     list.appendChild(sec);
   });
 
-  // Stats
-  document.getElementById('headerCounts').innerHTML = `<span>${keysDone}</span> / 24 keys`;
-  document.getElementById('fKeys').textContent = `${keysDone}/24`;
-  document.getElementById('fPieces').textContent = `${pDone}/${pTotal}`;
-  document.getElementById('fPct').textContent = Math.round(keysDone / 24 * 100) + '%';
+  // Stats — each key contributes min(doneCount, 2) toward 48 total slots
+  const pct = Math.round(slotsDone / 48 * 100);
+  document.getElementById('headerCounts').innerHTML = `<span>${slotsDone}</span> / 48`;
+  document.getElementById('fKeys').textContent = `${slotsDone}/48`;
+  document.getElementById('fPieces').textContent = `${slotsDone}/48`;
+  document.getElementById('fPct').textContent = pct + '%';
 
   const anyOpen = KEYS.some((_, ki) => state[`open_${ki}`]);
   const btn = document.getElementById('collapseAll');
