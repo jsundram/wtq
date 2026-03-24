@@ -74,6 +74,16 @@ function cellVal(ws, r, c) {
   return cell ? cell.v : null;
 }
 
+// Return display text for a cell — useful when Excel misinterprets values
+// (e.g. "2/3" parsed as a date). Falls back to .v if .w is unavailable.
+function cellText(ws, r, c) {
+  const addr = XLSX.utils.encode_cell({ r, c });
+  const cell = ws[addr];
+  if (!cell) return null;
+  if (cell.v instanceof Date && cell.w) return cell.w;
+  return cell.v;
+}
+
 function cellObj(ws, r, c) {
   const addr = XLSX.utils.encode_cell({ r, c });
   return ws[addr] || null;
@@ -101,7 +111,7 @@ function parseQuartetsSheet(wb) {
       key:      cleanStr(cellVal(ws, r, 2)).replace(/[*?]+$/, ''),
       mode:     cleanStr(cellVal(ws, r, 3)),
       composer,
-      piece:    cleanPiece(cellVal(ws, r, 6)),
+      piece:    cleanPiece(cellText(ws, r, 6)),
       notes:    cleanStr(cellVal(ws, r, 7)),
       scoreUrl: cleanStr(cellVal(ws, r, 9)),
       ytUrl:    extractYtUrl(cleanStr(cellVal(ws, r, 10))),
