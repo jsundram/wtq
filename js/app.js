@@ -9,26 +9,26 @@ let PLAYED_DATES = {};  // pid → most recent date string
 const KEYS = [
   { k:'C',   m:'Major', disp:'C',   enh:null,           aliases:[['C','Major']] },
   { k:'C',   m:'Minor', disp:'C',   enh:null,           aliases:[['C','Minor']] },
-  { k:'C♯',  m:'Major', disp:'C♯',  enh:'D♭ in score',  aliases:[['C#','Major'],['D-flat','Major'],['Db','Major']] },
+  { k:'C♯',  m:'Major', disp:'C♯',  enh:'D♭ in score',  aliases:[['C#','Major'],['Db','Major']] },
   { k:'C♯',  m:'Minor', disp:'C♯',  enh:null,           aliases:[['C#','Minor']] },
   { k:'D',   m:'Major', disp:'D',   enh:null,           aliases:[['D','Major']] },
   { k:'D',   m:'Minor', disp:'D',   enh:null,           aliases:[['D','Minor']] },
-  { k:'E♭',  m:'Major', disp:'E♭',  enh:null,           aliases:[['Eb','Major'],['E-flat','Major']] },
-  { k:'E♭',  m:'Minor', disp:'E♭',  enh:null,           aliases:[['Eb','Minor'],['E-flat','Minor']] },
+  { k:'E♭',  m:'Major', disp:'E♭',  enh:null,           aliases:[['Eb','Major']] },
+  { k:'E♭',  m:'Minor', disp:'E♭',  enh:null,           aliases:[['Eb','Minor']] },
   { k:'E',   m:'Major', disp:'E',   enh:null,           aliases:[['E','Major']] },
   { k:'E',   m:'Minor', disp:'E',   enh:null,           aliases:[['E','Minor']] },
   { k:'F',   m:'Major', disp:'F',   enh:null,           aliases:[['F','Major']] },
   { k:'F',   m:'Minor', disp:'F',   enh:null,           aliases:[['F','Minor']] },
-  { k:'F♯',  m:'Major', disp:'F♯',  enh:null,           aliases:[['F#','Major'],['F-sharp','Major']] },
-  { k:'F♯',  m:'Minor', disp:'F♯',  enh:null,           aliases:[['F#','Minor'],['F-sharp','Minor']] },
+  { k:'F♯',  m:'Major', disp:'F♯',  enh:null,           aliases:[['F#','Major']] },
+  { k:'F♯',  m:'Minor', disp:'F♯',  enh:null,           aliases:[['F#','Minor']] },
   { k:'G',   m:'Major', disp:'G',   enh:null,           aliases:[['G','Major']] },
   { k:'G',   m:'Minor', disp:'G',   enh:null,           aliases:[['G','Minor']] },
-  { k:'A♭',  m:'Major', disp:'A♭',  enh:null,           aliases:[['Ab','Major'],['A-flat','Major']] },
-  { k:'G♯',  m:'Minor', disp:'G♯',  enh:'A♭ in score',  aliases:[['G#','Minor'],['Ab','Minor'],['A-flat','Minor']] },
+  { k:'A♭',  m:'Major', disp:'A♭',  enh:null,           aliases:[['Ab','Major']] },
+  { k:'G♯',  m:'Minor', disp:'G♯',  enh:'A♭ in score',  aliases:[['G#','Minor'],['Ab','Minor']] },
   { k:'A',   m:'Major', disp:'A',   enh:null,           aliases:[['A','Major']] },
   { k:'A',   m:'Minor', disp:'A',   enh:null,           aliases:[['A','Minor']] },
-  { k:'B♭',  m:'Major', disp:'B♭',  enh:null,           aliases:[['Bb','Major'],['B-flat','Major']] },
-  { k:'B♭',  m:'Minor', disp:'B♭',  enh:null,           aliases:[['Bb','Minor'],['B-flat','Minor']] },
+  { k:'B♭',  m:'Major', disp:'B♭',  enh:null,           aliases:[['Bb','Major']] },
+  { k:'B♭',  m:'Minor', disp:'B♭',  enh:null,           aliases:[['Bb','Minor']] },
   { k:'B',   m:'Major', disp:'B',   enh:null,           aliases:[['B','Major']] },
   { k:'B',   m:'Minor', disp:'B',   enh:null,           aliases:[['B','Minor']] },
 ];
@@ -42,8 +42,12 @@ const loadState = () => { try { return JSON.parse(localStorage.getItem(LS)) || {
 const saveState = s => localStorage.setItem(LS, JSON.stringify(s));
 let state = loadState();
 
+function normKey(k) {
+  return k.replace(/-sharp/gi, '#').replace(/-flat/gi, 'b');
+}
 function pieceMatches(p, key) {
-  return key.aliases.some(([k, m]) => p.key === k && p.mode === m);
+  const pk = normKey(p.key);
+  return key.aliases.some(([k, m]) => pk === k && p.mode === m);
 }
 function piecesForKey(key)     { return PIECES.filter(p => pieceMatches(p, key)); }
 function candidatesForKey(key) { return piecesForKey(key).filter(p => p.status === 'candidate'); }
@@ -94,10 +98,19 @@ function applyPlayedState() {
   PLAYED_DATES = {};
   let applied = 0;
   for (const played of PLAYED) {
+    const inc = (played.include || '').toUpperCase();
+    if (inc !== 'Y' && inc !== 'M') continue;
+
     const key = KEYS.find(k => pieceMatches(played, k));
-    if (!key) continue;
+    if (!key) {
+      console.warn('[played] no key match:', played.composer, played.piece, `key=${played.key} mode=${played.mode}`);
+      continue;
+    }
     const match = findMatchingPiece(played, key);
-    if (!match) continue;
+    if (!match) {
+      console.warn('[played] no piece match:', played.composer, played.piece, `in ${key.k} ${key.m}`, '| candidates:', piecesForKey(key).map(p => `${p.composer}:${p.piece}`));
+      continue;
+    }
     const id = pid(key, match);
     if (!state[id]) {
       state[id] = true;
@@ -133,7 +146,7 @@ function sectorFill(keyIdx) {
   const { total, done } = keyStats(key);
   const keyDone = !!state[kid(key)];
   const allUncertain = piecesForKey(key).every(p => p.status === 'uncertain' || p.status === 'alternate');
-  if (keyDone || (total > 0 && done === total)) return '#8b1a1a';
+  if (keyDone || done >= 2) return '#8b1a1a';
   if (done > 0) return 'rgba(139,26,26,0.38)';
   if (allUncertain && total === 0) return 'rgba(196,154,30,0.28)';
   return 'rgba(200,191,170,0.35)';
@@ -143,7 +156,7 @@ function sectorStroke(keyIdx) {
   const key = KEYS[keyIdx];
   const { total, done } = keyStats(key);
   const keyDone = !!state[kid(key)];
-  if (keyDone || (total > 0 && done === total)) return '#6b1010';
+  if (keyDone || done >= 2) return '#6b1010';
   if (done > 0) return 'rgba(139,26,26,0.6)';
   return 'rgba(150,140,120,0.5)';
 }
