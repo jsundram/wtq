@@ -1,9 +1,9 @@
 # Well-Tempered Quartet
 
-A personal project to perform one string quartet in each of the 24 keys of Bach's
-*Well-Tempered Clavier* — one prelude-and-fugue key per concert, covering all
-major and minor tonalities. The dashboard tracks candidate repertoire and marks
-keys as complete over time.
+A personal project to perform two string quartets in each of the 24 keys of Bach's
+*Well-Tempered Clavier* — 48 pieces total, covering all major and minor tonalities.
+The dashboard tracks candidate repertoire, played performances, and marks keys
+complete over time.
 
 Started with [this claude chat](https://claude.ai/chat/ed36e476-e218-45a4-a092-d9f9bb66d561)
 
@@ -24,14 +24,6 @@ Data is cached in `localStorage` for instant rendering on repeat visits, with a 
 | `js/app.js` | Dashboard rendering, state, circle of fifths |
 | `manifest.json` | Web app manifest (iOS home screen support) |
 | `favicon/` | App icons (SVG, PNG, ICO) |
-| `some_quartets_by_key.xlsx` | Local export of the source spreadsheet |
-| `xlsx_to_json.py` | Python conversion script (development/validation) |
-| `played_to_json.py` | Python script to extract played pieces (development) |
-| `quartets.json` | Generated data (Python pipeline output) |
-| `played.json` | Generated played pieces (Python pipeline output) |
-| `quartets.schema.json` | JSON Schema (draft 2020-12) for `quartets.json` |
-| `build.sh` | Runs Python conversion + validation |
-| `test_parse.mjs` | Tests JS parsing against Python output |
 
 ## Development
 
@@ -39,21 +31,16 @@ Data is cached in `localStorage` for instant rendering on repeat visits, with a 
 # Serve locally
 python3 -m http.server 8000
 # open http://localhost:8000/
-
-# Validate Python pipeline (requires uv)
-./build.sh
-
-# Test JS parsing matches Python output (requires node)
-curl -sL "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs" -o /tmp/xlsx.mjs
-node test_parse.mjs
 ```
-
-`build.sh` uses [`uv`](https://github.com/astral-sh/uv) to run Python with
-inline dependencies (`openpyxl`, `jsonschema`) — no virtualenv setup needed.
 
 ## Spreadsheet conventions
 
-The xlsx encodes editorial status via **cell background colour**:
+The Google Sheet has two worksheets:
+
+- **`>48 by key`** — candidate quartets organized by key, with editorial status encoded via cell background colour
+- **`Played`** — performance log with date, composer, piece, part, and an `include` column (`Y` = count toward progress, `M` = maybe, `n` = don't count, `N/A` = skip entirely)
+
+### Cell colours (">48 by key" sheet)
 
 | Colour | Hex | Meaning |
 |--------|-----|---------|
@@ -76,35 +63,21 @@ enharmonic equivalents that are resolved automatically:
 
 The dashboard shows both spellings where they differ.
 
+Key names are normalized before matching (`-sharp` → `#`, `-flat` → `b`), so
+the Played sheet can use any common spelling variant.
+
 ## Dashboard features
 
-- **Circle of fifths** at the top — outer ring = major, inner = minor; C at 12 o'clock.
-  Sectors fill red (complete), partial red (some pieces played), or muted (pending).
+- **Circle of fifths** at the top — outer ring = major (uppercase), inner = minor (lowercase); C at 12 o'clock.
+  Sectors fill red when 2+ pieces are done, partial red when some pieces are played, or muted when pending.
   Tap any sector to jump to that key's row.
+- **Progress counting** — each key contributes up to 2 pieces toward the 48-slot total (X/48).
 - **Progress rings** on each key row reflect how many candidate pieces have been
   played (arc fills proportionally).
-- **Partial completion** is tracked independently from marking a key "done" — the
-  ring fills as individual pieces are checked, but the key isn't counted complete
-  until the circle check is tapped.
+- **Played sheet integration** — performances logged in the Played sheet automatically check off matching pieces in the dashboard.
 - **Status badges** distinguish candidates, alternates, uncertain, and rejected entries.
 - **Score and video links** pulled from IMSLP and YouTube URLs in the spreadsheet.
 - **localStorage** persistence — all check state survives page reloads, no server needed.
 - **Stale-while-revalidate caching** — renders cached data instantly, refreshes from Google Sheets in background.
 - **Data source indicator** in footer shows whether data is live, cached, or offline.
-- Keys with only uncertain candidates show a ⚠ warning.
-
-## Data schema
-
-`quartets.schema.json` describes the structure of `quartets.json`. Key fields:
-
-```
-sharps      number    key-signature position (negative = flats, range −7…+7)
-key         string    tonal centre as spelled in xlsx (may be enharmonic)
-mode        string    "Major" | "Minor" | "n/a"
-composer    string    surname (+ initial where needed)
-piece       string    opus/catalogue number or short title; "" if TBD
-notes       string    free-text tonality or fugal content notes
-scoreUrl    string    IMSLP URL or ""
-ytUrl       string    YouTube URL or "" (extracted from prose if needed)
-status      string    "candidate" | "uncertain" | "alternate" | "rejected"
-```
+- Keys with only uncertain candidates show a warning.
