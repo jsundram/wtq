@@ -94,7 +94,7 @@ function findMatchingPiece(played, key) {
 }
 
 // Apply played data to state — additive only (never unchecks).
-function applyPlayedState() {
+function applyPlayedState(log = true) {
   PLAYED_DATES = {};
   let applied = 0;
   for (const played of PLAYED) {
@@ -103,12 +103,12 @@ function applyPlayedState() {
 
     const key = KEYS.find(k => pieceMatches(played, k));
     if (!key) {
-      console.warn('[played] no key match:', played.composer, played.piece, `key=${played.key} mode=${played.mode}`);
+      if (log) console.warn('[played] no key match:', played.composer, played.piece, `key=${played.key} mode=${played.mode}`);
       continue;
     }
     const match = findMatchingPiece(played, key);
     if (!match) {
-      console.warn('[played] no piece match:', played.composer, played.piece, `in ${key.k} ${key.m}`, '| candidates:', piecesForKey(key).map(p => `${p.composer}:${p.piece}`));
+      if (log) console.warn('[played] no piece match:', played.composer, played.piece, `in ${key.k} ${key.m}`, '| candidates:', piecesForKey(key).map(p => `${p.composer}:${p.piece}`));
       continue;
     }
     const id = pid(key, match);
@@ -367,7 +367,7 @@ function showSource(source) {
 function renderAll(data, source) {
   PIECES = data.pieces || [];
   PLAYED = data.played || [];
-  applyPlayedState();
+  applyPlayedState(source !== 'cache');
   render();
   buildCoF();
   showSource(source);
