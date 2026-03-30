@@ -4,6 +4,7 @@ import { loadData } from './data.js';
 let PIECES = [];
 let PLAYED = [];
 let PLAYED_DATES = {};  // pid → most recent date string
+let PLAYED_PIDS = new Set();  // pids locked by Played sheet
 
 // ── Key definitions (canonical Bach/WTC spellings) ──────────────────────
 const KEYS = [
@@ -96,6 +97,7 @@ function findMatchingPiece(played, key) {
 // Apply played data to state — additive only (never unchecks).
 function applyPlayedState(log = true) {
   PLAYED_DATES = {};
+  PLAYED_PIDS = new Set();
   let applied = 0;
   for (const played of PLAYED) {
     const inc = (played.include || '').toUpperCase();
@@ -112,6 +114,7 @@ function applyPlayedState(log = true) {
       continue;
     }
     const id = pid(key, match);
+    PLAYED_PIDS.add(id);
     if (!state[id]) {
       state[id] = true;
       applied++;
@@ -300,7 +303,7 @@ function render() {
           const isDone = !!state[pid(key, p)];
           const yt = ytLink(p.ytUrl);
           return `<div class="piece-row ${p.status}">
-            <div class="piece-check${isDone ? ' done' : ''}" data-pid="${pid(key, p)}">✓</div>
+            <div class="piece-check${isDone ? ' done' : ''}${PLAYED_PIDS.has(pid(key, p)) ? ' locked' : ''}" data-pid="${pid(key, p)}">✓</div>
             <div class="piece-info">
               <div class="piece-composer">${p.composer}${PLAYED_DATES[pid(key, p)] ? `<span class="played-date">${PLAYED_DATES[pid(key, p)]}</span>` : ''}</div>
               ${p.piece && p.piece !== 'tbd' ? `<div class="piece-title">${p.piece}</div>` : ''}
@@ -333,6 +336,7 @@ function render() {
     sec.querySelectorAll('[data-pid]').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
+        if (PLAYED_PIDS.has(el.dataset.pid)) return; // locked by Played sheet
         state[el.dataset.pid] = !state[el.dataset.pid];
         saveState(state); render(); buildCoF();
       });
