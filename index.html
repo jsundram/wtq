@@ -66,6 +66,17 @@
     cursor: pointer; font-family: 'Courier Prime', monospace;
   }
   .collapse-btn:active { background: var(--surface); }
+  .filter-btn {
+    background: none; border: 1px solid var(--rule);
+    border-radius: 3px; padding: 2px 7px;
+    font-size: .7rem; color: var(--ink-light);
+    cursor: pointer; font-family: 'Courier Prime', monospace;
+  }
+  .filter-btn.active {
+    background: var(--red); border-color: var(--red);
+    color: var(--cream);
+  }
+  .filter-btn:not(.active):active { background: var(--surface); }
 
   /* ── Circle of Fifths ── */
   .cof-wrap {
@@ -249,6 +260,7 @@
   <div class="header-top">
     <h1>Well-Tempered Quartet</h1>
     <div class="header-counts" id="headerCounts"><span>0</span> / 24 keys</div>
+    <button class="filter-btn" id="uncheckedToggle" title="Show only unchecked pieces">unchecked</button>
     <button class="collapse-btn" id="collapseAll" title="Toggle all"></button>
   </div>
   <div class="cof-wrap">

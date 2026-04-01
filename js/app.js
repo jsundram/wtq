@@ -42,6 +42,7 @@ const LS = 'wtq_v2';
 const loadState = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } };
 const saveState = s => localStorage.setItem(LS, JSON.stringify(s));
 let state = loadState();
+let showUncheckedOnly = false;
 
 function normKey(k) {
   return k.replace(/-sharp/gi, '#').replace(/-flat/gi, 'b');
@@ -267,6 +268,12 @@ function render() {
 
     slotsDone += Math.min(doneCount, 2);
 
+    // Filter: skip key sections that have no unchecked candidates
+    if (showUncheckedOnly) {
+      const hasUnchecked = candidates.some(p => !state[pid(key, p)]);
+      if (!hasUnchecked && !allUncertain) return;
+    }
+
     const fraction = candidates.length > 0 ? doneCount / candidates.length : 0;
 
     const sec = document.createElement('div');
@@ -299,7 +306,7 @@ function render() {
         </div>
       </div>
       <div class="pieces-list">
-        ${pieces.map(p => {
+        ${pieces.filter(p => !showUncheckedOnly || !state[pid(key, p)]).map(p => {
           const isDone = !!state[pid(key, p)];
           const yt = ytLink(p.ytUrl);
           return `<div class="piece-row ${p.status}">
@@ -378,6 +385,13 @@ function renderAll(data, source) {
 }
 
 async function init() {
+  // Wire up unchecked filter toggle
+  document.getElementById('uncheckedToggle').addEventListener('click', () => {
+    showUncheckedOnly = !showUncheckedOnly;
+    document.getElementById('uncheckedToggle').classList.toggle('active', showUncheckedOnly);
+    render();
+  });
+
   // Wire up collapse button
   document.getElementById('collapseAll').addEventListener('click', () => {
     const anyOpen = KEYS.some((_, ki) => state[`open_${ki}`]);
