@@ -264,7 +264,10 @@ function render() {
     const candidates = candidatesForKey(key);
     const doneCount = candidates.filter(p => state[pid(key, p)]).length;
     const isKeyDone = !!state[kid(key)];
-    const isOpen = !!state[`open_${ki}`];
+    // In unchecked mode, always open sections that have unchecked candidates
+    const isOpen = showUncheckedOnly
+      ? candidates.some(p => !state[pid(key, p)])
+      : !!state[`open_${ki}`];
     const allUncertain = candidates.length === 0;
 
     slotsDone += Math.min(doneCount, 2);
@@ -391,24 +394,18 @@ async function init() {
     showUncheckedOnly = !showUncheckedOnly;
     document.getElementById('uncheckedToggle').classList.toggle('active', showUncheckedOnly);
     if (showUncheckedOnly) {
-      // Save current open state, then expand all keys that have unchecked candidates
+      // Save current open state to restore later
       savedOpenState = {};
       KEYS.forEach((_, ki) => { savedOpenState[`open_${ki}`] = state[`open_${ki}`]; });
-      KEYS.forEach((key, ki) => {
-        const candidates = candidatesForKey(key);
-        const hasUnchecked = candidates.some(p => !state[pid(key, p)]);
-        if (hasUnchecked) state[`open_${ki}`] = true;
-        else delete state[`open_${ki}`];
-      });
     } else {
       // Restore saved open state
       KEYS.forEach((_, ki) => {
         delete state[`open_${ki}`];
         if (savedOpenState && savedOpenState[`open_${ki}`]) state[`open_${ki}`] = true;
       });
+      saveState(state);
       savedOpenState = null;
     }
-    saveState(state);
     render();
     if (showUncheckedOnly) window.scrollTo({ top: 0, behavior: 'smooth' });
   });
