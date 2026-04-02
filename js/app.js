@@ -42,6 +42,8 @@ const LS = 'wtq_v2';
 const loadState = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } };
 const saveState = s => localStorage.setItem(LS, JSON.stringify(s));
 let state = loadState();
+let showUncheckedOnly = false;
+let savedOpenState = null;  // snapshot of open_* keys before unchecked mode
 
 function normKey(k) {
   return k.replace(/-sharp/gi, '#').replace(/-flat/gi, 'b');
@@ -262,10 +264,19 @@ function render() {
     const candidates = candidatesForKey(key);
     const doneCount = candidates.filter(p => state[pid(key, p)]).length;
     const isKeyDone = !!state[kid(key)];
-    const isOpen = !!state[`open_${ki}`];
+    // In unchecked mode, always open sections that have unchecked candidates
+    const isOpen = showUncheckedOnly
+      ? candidates.some(p => !state[pid(key, p)])
+      : !!state[`open_${ki}`];
     const allUncertain = candidates.length === 0;
 
     slotsDone += Math.min(doneCount, 2);
+
+    // Filter: skip key sections that have no unchecked candidates
+    if (showUncheckedOnly) {
+      const hasUnchecked = candidates.some(p => !state[pid(key, p)]);
+      if (!hasUnchecked && !allUncertain) return;
+    }
 
     const fraction = candidates.length > 0 ? doneCount / candidates.length : 0;
 
@@ -299,7 +310,7 @@ function render() {
         </div>
       </div>
       <div class="pieces-list">
-        ${pieces.map(p => {
+        ${pieces.filter(p => !showUncheckedOnly || !state[pid(key, p)]).map(p => {
           const isDone = !!state[pid(key, p)];
           const yt = ytLink(p.ytUrl);
           return `<div class="piece-row ${p.status}">
@@ -378,6 +389,27 @@ function renderAll(data, source) {
 }
 
 async function init() {
+  // Wire up unchecked filter toggle
+  document.getElementById('uncheckedToggle').addEventListener('click', () => {
+    showUncheckedOnly = !showUncheckedOnly;
+    document.getElementById('uncheckedToggle').classList.toggle('active', showUncheckedOnly);
+    if (showUncheckedOnly) {
+      // Save current open state to restore later
+      savedOpenState = {};
+      KEYS.forEach((_, ki) => { savedOpenState[`open_${ki}`] = state[`open_${ki}`]; });
+    } else {
+      // Restore saved open state
+      KEYS.forEach((_, ki) => {
+        delete state[`open_${ki}`];
+        if (savedOpenState && savedOpenState[`open_${ki}`]) state[`open_${ki}`] = true;
+      });
+      saveState(state);
+      savedOpenState = null;
+    }
+    render();
+    if (showUncheckedOnly) window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
   // Wire up collapse button
   document.getElementById('collapseAll').addEventListener('click', () => {
     const anyOpen = KEYS.some((_, ki) => state[`open_${ki}`]);
