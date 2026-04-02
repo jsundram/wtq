@@ -43,6 +43,7 @@ const loadState = () => { try { return JSON.parse(localStorage.getItem(LS)) || {
 const saveState = s => localStorage.setItem(LS, JSON.stringify(s));
 let state = loadState();
 let showUncheckedOnly = false;
+let savedOpenState = null;  // snapshot of open_* keys before unchecked mode
 
 function normKey(k) {
   return k.replace(/-sharp/gi, '#').replace(/-flat/gi, 'b');
@@ -389,7 +390,27 @@ async function init() {
   document.getElementById('uncheckedToggle').addEventListener('click', () => {
     showUncheckedOnly = !showUncheckedOnly;
     document.getElementById('uncheckedToggle').classList.toggle('active', showUncheckedOnly);
+    if (showUncheckedOnly) {
+      // Save current open state, then expand all keys that have unchecked candidates
+      savedOpenState = {};
+      KEYS.forEach((_, ki) => { savedOpenState[`open_${ki}`] = state[`open_${ki}`]; });
+      KEYS.forEach((key, ki) => {
+        const candidates = candidatesForKey(key);
+        const hasUnchecked = candidates.some(p => !state[pid(key, p)]);
+        if (hasUnchecked) state[`open_${ki}`] = true;
+        else delete state[`open_${ki}`];
+      });
+    } else {
+      // Restore saved open state
+      KEYS.forEach((_, ki) => {
+        delete state[`open_${ki}`];
+        if (savedOpenState && savedOpenState[`open_${ki}`]) state[`open_${ki}`] = true;
+      });
+      savedOpenState = null;
+    }
+    saveState(state);
     render();
+    if (showUncheckedOnly) window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   // Wire up collapse button
